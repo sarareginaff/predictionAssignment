@@ -1,0 +1,146 @@
+---
+title: "Prediction Assignment"
+author: "Sara Regina Ferreira de Faria"
+date: "Aug 29, 2018"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Introduction
+
+The goal of this report is to find out the class of the exercise using the input data. In other words, we have to figure out how good the person is doing the activity.
+
+The data has 5 classes:
+* **Class A** - exactly according to the specification
+
+* **Class B** - throwing the elbows to the front
+
+* **Class C** - lifting the dumbbell only halfway
+
+* **Class D** - lowering the dumbbell only halfway
+
+* **Class E** - throwing the hips to the front
+
+The data for this project come from this source: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har
+
+# Load data
+
+```{r, fig.height = 4}
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv",'pml-training.csv')
+
+training <- read.csv('pml-training.csv')
+
+download.file("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv",'pml-testing.csv')
+
+testing <- read.csv('pml-testing.csv')
+```
+
+# Explore data
+
+Get how many data do we have:
+```{r, fig.height = 4}
+dim(training)
+dim(testing)
+```
+
+Get an idea of quantity of each class:
+```{r, fig.height = 4}
+plot(training$classe)
+```
+
+# Choose variables
+
+First of all we have to remove those variables that has more NAs or empty values than feasible values.
+```{r, fig.height = 4}
+nas = sapply(training, function(x) sum(is.na(x)))
+training = training[,nas == 0]
+testing = testing[,nas == 0]
+
+empty = sapply(training, function(x) sum(x == ''))
+training = training[,empty == 0]
+testing = testing[,empty == 0]
+```
+
+Then we remove the variables that has no direct impact in the classification of the exercise:
+```{r, fig.height = 4}
+names(training[,1:7])
+
+training = training[,8:60]
+testing = testing[,8:60]
+```
+
+# Train the model
+
+To train the model, we will devide the training data into two sets: one for train the model and the other one to test it.
+
+A Decision Tree and a Random Forest will be used to fit two models.
+
+```{r, fig.height = 4}
+# load libraries
+library(caret)
+library(rpart)
+library(randomForest)
+set.seed(43672)
+
+#Create training and testing set from testing data
+train <- createDataPartition(y = training$classe,p = .75, list=F)
+trainingSet <- training[train,]
+testingSet <- training[-train,]
+
+# train the models 
+modelRpart <- train(classe ~ . , data=trainingSet, method="rpart")
+modelRF <- randomForest(classe ~ .,   data=trainingSet, do.trace=F)
+```
+
+# Test the rpart model
+
+```{r, fig.height = 4}
+# make predictions
+predTest <- predict(modelRpart,testingSet)
+
+# summarize results
+plot(predTest)
+
+# print Confusion Matrix
+confusionMatrix(predTest,testingSet$classe)
+```
+
+# Test the random forest model
+
+```{r, fig.height = 4}
+# make predictions
+predTest <- predict(modelRF,testingSet)
+
+# summarize results
+plot(predTest)
+
+# print Confusion Matrix
+confusionMatrix(predTest,testingSet$classe)
+```
+
+# Compare models
+
+Comparing the two confusion matrix and the model statistics, the Random Forest has a better result than the decision tree (repart). The Random Forest model has an accuracy of 99.29% against only 48.84% in decision tree model.
+
+# Apply the Random Forest model to validation set
+
+```{r, fig.height = 4}
+# make predictions
+predValidation <- predict(modelRF,testing)
+
+# summarize results
+plot(predValidation)
+
+# print results
+print(predValidation)
+```
+
+
+# Excutive Summary
+For this project, the goal was to predict the class of each exercise (A, B, C, D or E).
+First of all, the data variables that were mostly NAs or empty were removed. Than the variables that were not meaningfull were removed, like ID or the name of the user.
+
+To train the model, a Decision Tree and a Random Forest were used in 75% of the training data. Applaying the models to the test data, the Random Forest had a better result with an accuracy of 99%.
+
+Then the Random Forest model was used with validation data and the results will be evaluated in another assignment.
